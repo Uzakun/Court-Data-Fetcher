@@ -1,0 +1,13 @@
+{
+  "name": "court-data-fetcher",
+  "version": "1.0.0",
+  "description": "Court Data Fetcher & Mini-Dashboard for Indian Courts",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve .",
+    "dev": "serve ."
+  },
+  "keywords": ["court", "legal", "india", "case-management"],
+  "author": "Your Name",
+  "license": "MIT"
+}
