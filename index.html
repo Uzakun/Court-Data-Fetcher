@@ -467,21 +467,18 @@
         }
 
         function downloadPDF(docName) {
-            // Create a sample PDF content (base64 encoded minimal PDF)
-            const pdfContent = `%PDF-1.4
+            try {
+                console.log('Downloading PDF:', docName);
+                
+                // Create a more robust PDF content
+                const currentDate = new Date().toLocaleDateString();
+                const pdfContent = `%PDF-1.4
 1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
+<< /Type /Catalog /Pages 2 0 R >>
 endobj
 
 2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
 endobj
 
 3 0 obj
@@ -490,43 +487,41 @@ endobj
 /Parent 2 0 R
 /MediaBox [0 0 612 792]
 /Contents 4 0 R
-/Resources <<
-/Font <<
-/F1 5 0 R
->>
->>
+/Resources << /Font << /F1 5 0 R >> >>
 >>
 endobj
 
 4 0 obj
-<<
-/Length 200
->>
+<< /Length 350 >>
 stream
 BT
-/F1 12 Tf
-72 720 Td
+/F1 16 Tf
+72 750 Td
 (DELHI HIGH COURT) Tj
-0 -24 Td
+/F1 14 Tf
+0 -30 Td
 (${docName}) Tj
-0 -24 Td
+/F1 12 Tf
+0 -40 Td
 (Case Document - Demo Version) Tj
-0 -48 Td
-(This is a sample PDF generated for demonstration purposes.) Tj
-0 -24 Td
-(In real implementation, this would be the actual court document.) Tj
-0 -24 Td
-(Generated on: ${new Date().toLocaleDateString()}) Tj
+0 -30 Td
+(This is a sample PDF generated for demonstration) Tj
+0 -20 Td
+(purposes of the Court Data Fetcher system.) Tj
+0 -40 Td
+(In a real implementation, this would contain) Tj
+0 -20 Td
+(the actual court document from the case file.) Tj
+0 -40 Td
+(Generated on: ${currentDate}) Tj
+0 -30 Td
+(Status: Demo/Testing Mode) Tj
 ET
 endstream
 endobj
 
 5 0 obj
-<<
-/Type /Font
-/Subtype /Type1
-/BaseFont /Helvetica
->>
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 
 xref
@@ -536,35 +531,73 @@ xref
 0000000053 00000 n 
 0000000110 00000 n 
 0000000271 00000 n 
-0000000524 00000 n 
+0000000674 00000 n 
 trailer
-<<
-/Size 6
-/Root 1 0 R
->>
+<< /Size 6 /Root 1 0 R >>
 startxref
-593
+733
 %%EOF`;
 
-            // Create blob and download
-            const blob = new Blob([pdfContent], { type: 'application/pdf' });
-            const url = window.URL.createObjectURL(blob);
-            
-            // Create download link
-            const downloadLink = document.createElement('a');
-            downloadLink.href = url;
-            downloadLink.download = `${docName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
-            
-            // Trigger download
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            
-            // Clean up
-            window.URL.revokeObjectURL(url);
-            
-            // Show success message
-            showSuccess(`✅ Downloaded: ${docName}.pdf`);
+                // Check browser support
+                if (!window.Blob || !window.URL || !window.URL.createObjectURL) {
+                    throw new Error('Browser does not support file downloads');
+                }
+
+                // Create blob with explicit MIME type
+                const blob = new Blob([pdfContent], { 
+                    type: 'application/pdf;charset=utf-8' 
+                });
+                
+                console.log('Blob created, size:', blob.size);
+                
+                // Create object URL
+                const url = window.URL.createObjectURL(blob);
+                console.log('Object URL created:', url);
+                
+                // Create and configure download link
+                const downloadLink = document.createElement('a');
+                downloadLink.href = url;
+                downloadLink.download = `${docName.replace(/[^a-z0-9\s]/gi, '_').toLowerCase().replace(/\s+/g, '_')}.pdf`;
+                downloadLink.style.display = 'none';
+                
+                // Add to DOM, click, and remove
+                document.body.appendChild(downloadLink);
+                
+                // Force download for different browsers
+                if (downloadLink.click) {
+                    downloadLink.click();
+                } else if (downloadLink.dispatchEvent) {
+                    const event = new MouseEvent('click', {
+                        view: window,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    downloadLink.dispatchEvent(event);
+                }
+                
+                // Clean up
+                setTimeout(() => {
+                    document.body.removeChild(downloadLink);
+                    window.URL.revokeObjectURL(url);
+                }, 1000);
+                
+                // Show success message
+                showSuccess(`✅ Downloaded: ${docName}.pdf`);
+                console.log('Download initiated successfully');
+                
+            } catch (error) {
+                console.error('Download error:', error);
+                
+                // Fallback: open in new tab
+                const fallbackContent = `data:application/pdf;base64,JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIgNzkyXQovQ29udGVudHMgNCAwIFIKL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4KPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCAyMDAgPj4Kc3RyZWFtCkJUCi9GMSA5IFRmCjcyIDcyMCBUZAooREVMSEkgSElHSCBDT1VSVCkgVGoKMCAtMjQgVGQKKCR7ZG9jTmFtZX0pIFRqCjAgLTI0IFRkCihDYXNlIERvY3VtZW50IC0gRGVtbyBWZXJzaW9uKSBUagpFVApzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL1R5cGUxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iago=`;
+                
+                const newWindow = window.open(fallbackContent, '_blank');
+                if (newWindow) {
+                    showSuccess(`📄 PDF opened in new tab: ${docName}`);
+                } else {
+                    showError('Unable to download PDF. Please allow pop-ups and try again.');
+                }
+            }
             
             return false;
         }
