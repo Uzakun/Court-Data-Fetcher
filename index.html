@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Court Data Fetcher & Mini-Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .form-section, .results-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .form-section h2, .results-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            font-style: italic;
+        }
+
+        .case-details {
+            display: none;
+        }
+
+        .detail-card {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            color: #666;
+        }
+
+        .parties-section {
+            background: #e3f2fd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .pdf-links {
+            margin-top: 20px;
+        }
+
+        .pdf-link {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+
+        .pdf-link:hover {
+            background: #218838;
+        }
+
+        .query-log {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .query-log h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .log-entry {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ Court Data Fetcher</h1>
+            <p>Delhi High Court Case Information System</p>
+        </div>
+
+        <div class="main-content">
+            <div class="form-section">
+                <h2>Search Case Details</h2>
+                <form id="caseForm">
+                    <div class="form-group">
+                        <label for="caseType">Case Type</label>
+                        <select id="caseType" required>
+                            <option value="">Select Case Type</option>
+                            <option value="CRL">Criminal Case</option>
+                            <option value="CWP">Civil Writ Petition</option>
+                            <option value="FAO">First Appeal from Order</option>
+                            <option value="CS">Civil Suit</option>
+                            <option value="RFA">Regular First Appeal</option>
+                            <option value="MAC">Motor Accident Claim</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="caseNumber">Case Number</label>
+                        <input type="text" id="caseNumber" placeholder="Enter case number (e.g., 1234)" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="filingYear">Filing Year</label>
+                        <select id="filingYear" required>
+                            <option value="">Select Year</option>
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                            <option value="2019">2019</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        🔍 Fetch Case Details
+                    </button>
+                </form>
+
+                <div class="loading" id="loading">
+                    ⏳ Fetching case details from Delhi High Court...
+                </div>
+            </div>
+
+            <div class="results-section">
+                <h2>Case Information</h2>
+                <div id="errorMessage"></div>
+                <div id="successMessage"></div>
+                
+                <div class="case-details" id="caseDetails">
+                    <div class="detail-card">
+                        <div class="detail-label">Case Number:</div>
+                        <div class="detail-value" id="displayCaseNumber"></div>
+                    </div>
+
+                    <div class="parties-section">
+                        <h3>Parties</h3>
+                        <div id="partiesInfo"></div>
+                    </div>
+
+                    <div class="detail-card">
+                        <div class="detail-label">Filing Date:</div>
+                        <div class="detail-value" id="filingDate"></div>
+                    </div>
+
+                    <div class="detail-card">
+                        <div class="detail-label">Next Hearing Date:</div>
+                        <div class="detail-value" id="nextHearing"></div>
+                    </div>
+
+                    <div class="detail-card">
+                        <div class="detail-label">Case Status:</div>
+                        <div class="detail-value" id="caseStatus"></div>
+                    </div>
+
+                    <div class="pdf-links" id="pdfLinks">
+                        <h3>📄 Available Documents</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="query-log">
+            <h2>Recent Queries</h2>
+            <div id="queryLog">
+                <p>No queries yet. Search for a case to see the query history.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock database for demonstration
+        let queryHistory = [];
+        
+        // Mock court data
+        const mockCaseData = {
+            'CRL-1234-2024': {
+                caseNumber: 'CRL/1234/2024',
+                parties: {
+                    petitioner: 'State of Delhi',
+                    respondent: 'Rajesh Kumar & Ors.'
+                },
+                filingDate: '15-03-2024',
+                nextHearing: '25-08-2024',
+                status: 'Pending for Arguments',
+                documents: [
+                    { name: 'Order dated 10-07-2024', url: '#' },
+                    { name: 'Judgment dated 05-06-2024', url: '#' }
+                ]
+            },
+            'CWP-5678-2023': {
+                caseNumber: 'CWP/5678/2023',
+                parties: {
+                    petitioner: 'ABC Corporation Ltd.',
+                    respondent: 'Union of India & Ors.'
+                },
+                filingDate: '22-08-2023',
+                nextHearing: '30-08-2024',
+                status: 'Arguments Concluded',
+                documents: [
+                    { name: 'Final Order dated 20-07-2024', url: '#' },
+                    { name: 'Interim Order dated 15-01-2024', url: '#' }
+                ]
+            },
+            'FAO-9101-2022': {
+                caseNumber: 'FAO/9101/2022',
+                parties: {
+                    appellant: 'Sunita Sharma',
+                    respondent: 'Ram Prasad & Ors.'
+                },
+                filingDate: '05-11-2022',
+                nextHearing: '15-09-2024',
+                status: 'For Final Hearing',
+                documents: [
+                    { name: 'Appeal Judgment dated 12-06-2024', url: '#' },
+                    { name: 'Stay Order dated 20-12-2022', url: '#' }
+                ]
+            }
+        };
+
+        // Add click event listener to the button as well
+        document.getElementById('submitBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            handleFormSubmit();
+        });
+        
+        document.getElementById('caseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            handleFormSubmit();
+        });
+        
+        function handleFormSubmit() {
+            const caseType = document.getElementById('caseType').value;
+            const caseNumber = document.getElementById('caseNumber').value;
+            const filingYear = document.getElementById('filingYear').value;
+            
+            console.log('Form submitted:', { caseType, caseNumber, filingYear });
+            
+            if (!caseType || !caseNumber || !filingYear) {
+                showError('Please fill in all fields');
+                return;
+            }
+            
+            // Clear previous results
+            document.getElementById('errorMessage').innerHTML = '';
+            document.getElementById('successMessage').innerHTML = '';
+            document.getElementById('caseDetails').style.display = 'none';
+            
+            // Show loading state
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').textContent = '⏳ Searching...';
+            
+            // Simulate API call delay
+            setTimeout(() => {
+                fetchCaseData(caseType, caseNumber, filingYear);
+            }, 1500);
+        }
+
+        function fetchCaseData(caseType, caseNumber, filingYear) {
+            const caseKey = `${caseType}-${caseNumber}-${filingYear}`;
+            
+            // Log the query
+            const queryData = {
+                timestamp: new Date().toLocaleString(),
+                caseType: caseType,
+                caseNumber: caseNumber,
+                filingYear: filingYear,
+                searchKey: caseKey
+            };
+            
+            queryHistory.unshift(queryData);
+            updateQueryLog();
+            
+            // Hide loading and restore button
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').textContent = '🔍 Fetch Case Details';
+            
+            // Check if case exists in mock data
+            if (mockCaseData[caseKey]) {
+                displayCaseData(mockCaseData[caseKey]);
+                showSuccess('Case details fetched successfully from Delhi High Court database');
+            } else {
+                showError(`Case ${caseType}/${caseNumber}/${filingYear} not found in the court database. Please verify the case details.`);
+            }
+        }
+
+        function displayCaseData(caseData) {
+            document.getElementById('displayCaseNumber').textContent = caseData.caseNumber;
+            document.getElementById('filingDate').textContent = caseData.filingDate;
+            document.getElementById('nextHearing').textContent = caseData.nextHearing;
+            document.getElementById('caseStatus').textContent = caseData.status;
+            
+            // Display parties
+            const partiesInfo = document.getElementById('partiesInfo');
+            let partiesHtml = '';
+            
+            if (caseData.parties.petitioner && caseData.parties.respondent) {
+                partiesHtml = `
+                    <div><strong>Petitioner:</strong> ${caseData.parties.petitioner}</div>
+                    <div><strong>Respondent:</strong> ${caseData.parties.respondent}</div>
+                `;
+            } else if (caseData.parties.appellant && caseData.parties.respondent) {
+                partiesHtml = `
+                    <div><strong>Appellant:</strong> ${caseData.parties.appellant}</div>
+                    <div><strong>Respondent:</strong> ${caseData.parties.respondent}</div>
+                `;
+            }
+            
+            partiesInfo.innerHTML = partiesHtml;
+            
+            // Display PDF links
+            const pdfLinksContainer = document.getElementById('pdfLinks');
+            let pdfHtml = '<h3>📄 Available Documents</h3>';
+            
+            caseData.documents.forEach(doc => {
+                pdfHtml += `<a href="${doc.url}" class="pdf-link" onclick="downloadPDF('${doc.name}')">${doc.name}</a>`;
+            });
+            
+            pdfLinksContainer.innerHTML = pdfHtml;
+            
+            // Show case details
+            document.getElementById('caseDetails').style.display = 'block';
+        }
+
+        function downloadPDF(docName) {
+            alert(`In a real implementation, this would download: ${docName}\n\nFor demo purposes, this is simulated.`);
+            return false;
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').innerHTML = `<div class="error-message">${message}</div>`;
+        }
+
+        function showSuccess(message) {
+            document.getElementById('successMessage').innerHTML = `<div class="success-message">${message}</div>`;
+        }
+
+        function updateQueryLog() {
+            const queryLogContainer = document.getElementById('queryLog');
+            
+            if (queryHistory.length === 0) {
+                queryLogContainer.innerHTML = '<p>No queries yet. Search for a case to see the query history.</p>';
+                return;
+            }
+            
+            let logHtml = '';
+            queryHistory.slice(0, 5).forEach(query => {
+                logHtml += `
+                    <div class="log-entry">
+                        <strong>Query:</strong> ${query.caseType}/${query.caseNumber}/${query.filingYear}<br>
+                        <strong>Time:</strong> ${query.timestamp}<br>
+                        <strong>Status:</strong> ${mockCaseData[query.searchKey] ? '✅ Found' : '❌ Not Found'}
+                    </div>
+                `;
+            });
+            
+            queryLogContainer.innerHTML = logHtml;
+        }
+
+        // Debug function to test button
+        function testButton() {
+            console.log('Button test function called');
+            alert('Button is working! Please fill all fields and try again.');
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', function() {
+            console.log('Page loaded, initializing...');
+            
+            // Test if elements exist
+            const form = document.getElementById('caseForm');
+            const button = document.getElementById('submitBtn');
+            console.log('Form element:', form);
+            console.log('Button element:', button);
+            
+            // Add some sample data to query history
+            queryHistory = [
+                {
+                    timestamp: new Date(Date.now() - 3600000).toLocaleString(),
+                    caseType: 'CRL',
+                    caseNumber: '1234',
+                    filingYear: '2024',
+                    searchKey: 'CRL-1234-2024'
+                },
+                {
+                    timestamp: new Date(Date.now() - 7200000).toLocaleString(),
+                    caseType: 'CWP',
+                    caseNumber: '5678',
+                    filingYear: '2023',
+                    searchKey: 'CWP-5678-2023'
+                }
+            ];
+            updateQueryLog();
+        });
+    </script>
+</body>
+</html>
